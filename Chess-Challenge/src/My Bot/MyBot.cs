@@ -5,6 +5,8 @@ using ChessChallenge.API;
 
 public class MyBot : IChessBot
 {
+    // TODO 3: Make depth as parameter of all strategies. Set up depth on the base of time left.
+    
     public Move Think(Board board, Timer timer)
     {
         LastMoveStrategy = 0;
@@ -17,7 +19,7 @@ public class MyBot : IChessBot
             Console.WriteLine("Failure predicted.");
             return allMoves[0]; // We are definitely lost
         }
-
+        
         Move bestMove;
         if (FindCheckMateMove(board, moves, out bestMove))
         {
@@ -29,12 +31,14 @@ public class MyBot : IChessBot
             LastMoveStrategy = 2;
             return bestMove;
         }
-        if (FindCaptureMove(board, moves, out bestMove))
+        if (FindCaptureMove(board, moves, out bestMove)) // TODO 1: Capture by two moves, not by one
         {
             LastMoveStrategy = 3;
             return bestMove;
         }
 
+        // TODO 2: Filter moves after which we are captured, or at least cheapest piece will be captured.
+        
         var rnd = new Random();
         return moves[rnd.Next(moves.Length)];
     }
