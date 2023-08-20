@@ -11,6 +11,7 @@ public class MyBot : IChessBot
         {
             if (MoveIsCheckmate(board, move)) return move;
         }
+
         foreach (var move in moves)
         {
             if (IsCheckMateOnNextMove(board, move)) return move;
