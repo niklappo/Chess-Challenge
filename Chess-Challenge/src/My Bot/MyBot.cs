@@ -14,7 +14,7 @@ public class MyBot : IChessBot
         Move[] allMoves = board.GetLegalMoves();
         if (allMoves.Length == 0) return new Move(); // Can happen if called from this class
 
-        var moves = AfraidOfLosing ? FilterMoves(allMoves, board) : allMoves;
+        var moves = AfraidOfLosing ? FilterMoves(allMoves, board, 1) : allMoves;
         if (moves.Length == 0) {
             Console.WriteLine("Failure predicted.");
             return allMoves[0]; // We are definitely lost
@@ -37,10 +37,14 @@ public class MyBot : IChessBot
             return bestMove;
         }
 
+        var rnd = new Random((int)DateTime.Now.Ticks);
+
         // TODO 2: Filter moves after which we are captured, or at least cheapest piece will be captured.
-        
-        var rnd = new Random();
-        return moves[rnd.Next(moves.Length)];
+        var newMoves = AfraidOfLosing ? FilterMoves(moves, board, 3) : moves;
+
+        return newMoves.Length > 0
+            ? newMoves[rnd.Next(newMoves.Length)]
+            : moves[rnd.Next(moves.Length)];
     }
 
     #region Properties
@@ -135,7 +139,7 @@ public class MyBot : IChessBot
         }, board, move);
     }
 
-    static Move[] FilterMoves(IReadOnlyList<Move> moves, Board board)
+    static Move[] FilterMoves(IReadOnlyList<Move> moves, Board board, int strategy)
     {
         var otherBot = new MyBot();
         otherBot.AfraidOfLosing = false;
@@ -143,7 +147,7 @@ public class MyBot : IChessBot
         return moves.Where(move => MakeMoveAndDoFunc(boardAfterMove =>
         {
             otherBot.Think(boardAfterMove, timer);
-            return otherBot.LastMoveStrategy != 1;
+            return otherBot.LastMoveStrategy != strategy;
         }, board, move)).ToArray();
     }
     #endregion
@@ -185,7 +189,6 @@ public class MyBot : IChessBot
         }
         
         Console.WriteLine($"It has to be checkmate for {(board.IsWhiteToMove ? "Black" : "White")} ");
-        Console.WriteLine(board.CreateDiagram());
         return true;
     }
     #endregion
