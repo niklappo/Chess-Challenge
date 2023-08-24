@@ -31,7 +31,7 @@ public class MyBot : IChessBot
             LastMoveStrategy = 2;
             return bestMove;
         }
-        if (FindCaptureMove(board, moves, out bestMove)) // TODO 1: Capture by two moves, not by one
+        if (FindCaptureMove(board, moves, out bestMove))
         {
             LastMoveStrategy = 3;
             return bestMove;
@@ -98,25 +98,62 @@ public class MyBot : IChessBot
     #endregion
 
     #region Capture
-    static bool FindCaptureMove(Board board, IReadOnlyList<Move> moves, out Move captureMove)
+    bool FindCaptureMove(Board board, IReadOnlyList<Move> moves, out Move captureMove)
+    {
+        captureMove = TryGetCaptureMove(board, moves, AfraidOfLosing);
+        return captureMove.IsCapture;
+    }
+
+    static Move TryGetCaptureMove(Board board, IReadOnlyList<Move> moves, bool lookForTwoMovesCapture = true, bool allowSacrifice = true)
     {
         Move resultMove = default;
-        void SaveMoveIfBest(Move move, bool preferable = false)
+        void SaveMoveIfBest(Move move, PieceType capturedPiece, bool preferable = false)
         {
-            if (move.CapturePieceType < resultMove.CapturePieceType) return;
-            if (!preferable && move.CapturePieceType == resultMove.CapturePieceType) return;
+            if (capturedPiece < resultMove.CapturePieceType) return;
+            if (!preferable && capturedPiece == resultMove.CapturePieceType) return;
             resultMove = move;
         }
         foreach (var move in moves)
         {
             if (move.IsCapture)
             {
-                if (move.MovePieceType < move.CapturePieceType) SaveMoveIfBest(move);
-                if (!MovedPeaceMayBeEaten(move, board)) SaveMoveIfBest(move, true);
+                if (allowSacrifice && move.MovePieceType < move.CapturePieceType) SaveMoveIfBest(move, move.CapturePieceType);
+                if (!MovedPeaceMayBeEaten(move, board)) SaveMoveIfBest(move, move.CapturePieceType, true);
+            }
+            else if (lookForTwoMovesCapture)
+            {
+                // Try to capture in two moves
+                var capturedInTwoMoves = MakeMoveAndDoFunc(FindBestCaptureAfterOpponentMove, board, move);
+                if (capturedInTwoMoves > 0) SaveMoveIfBest(move, capturedInTwoMoves);
             }
         }
-        captureMove = resultMove;
-        return resultMove.IsCapture;
+        // TODO 4: Think of case when moved piece was a protector.
+        // After the capture move another our piece (not moved one) may be captured by opponent.
+        // So we may lose more valuable piece than the captured one.
+        return resultMove;
+    }
+
+    static PieceType FindBestCaptureAfterOpponentMove(Board board)
+    {
+        var guaranteedCapturedPiece = PieceType.King;
+        var opponentMoves = board.GetLegalMoves();
+        if (!opponentMoves.Any()) return PieceType.None;
+        foreach (var opponentMove in opponentMoves)
+        {
+            PieceType lostPiece = PieceType.None;
+            if (opponentMove.IsCapture) lostPiece = opponentMove.CapturePieceType;
+            var bestCapture =
+                MakeMoveAndDoFunc(
+                    boardAfterMove => TryGetCaptureMove(
+                        boardAfterMove, 
+                        boardAfterMove.GetLegalMoves(true), 
+                        false,
+                    lostPiece == PieceType.None), // We can sacrifice one piece only on the first or on the second opponent move.
+                    board, opponentMove);
+            if (bestCapture.CapturePieceType <= lostPiece) return PieceType.None; // After at least one opponent move we cannot do a meaningful capture.
+            if (bestCapture.CapturePieceType < guaranteedCapturedPiece) guaranteedCapturedPiece = bestCapture.CapturePieceType;
+        }
+        return guaranteedCapturedPiece;
     }
     #endregion
 
@@ -149,13 +186,9 @@ public class MyBot : IChessBot
     #endregion
 
     #region Checkmate helpers
-// Test if this move gives checkmate
     static bool MoveIsCheckmate(Board board, Move move)
     {
-        board.MakeMove(move);
-        bool isMate = board.IsInCheckmate();
-        board.UndoMove(move);
-        return isMate;
+        return MakeMoveAndDoFunc(boardAfterMove => boardAfterMove.IsInCheckmate(), board, move);
     }
 
     static bool IsCheckMateOnNextMove(Board board, Move currentMove)
