@@ -188,7 +188,6 @@ public class MyBot : IChessBot
             if (!success) return false;
         }
         
-        Console.WriteLine($"It has to be checkmate for {(board.IsWhiteToMove ? "Black" : "White")} ");
         return true;
     }
     #endregion
