@@ -5,6 +5,8 @@ using ChessChallenge.API;
 
 public class MyBot : IChessBot
 {
+    private static readonly Random rnd = new();
+
     // TODO 3: Make depth as parameter of all strategies. Set up depth on the base of time left.
     
     public Move Think(Board board, Timer timer)
@@ -36,8 +38,6 @@ public class MyBot : IChessBot
             LastMoveStrategy = 3;
             return bestMove;
         }
-
-        var rnd = new Random((int)DateTime.Now.Ticks);
 
         // TODO 2: Filter moves after which we are captured, or at least cheapest piece will be captured.
         var newMoves = AfraidOfLosing ? FilterMoves(moves, board, 3) : moves;
