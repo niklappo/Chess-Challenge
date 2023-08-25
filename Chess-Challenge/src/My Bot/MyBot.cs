@@ -139,17 +139,17 @@ public class MyBot : IChessBot
         }, board, move);
     }
 
-    static Move[] FilterMoves(IReadOnlyList<Move> moves, Board board, int strategy)
+    static Move[] FilterMoves(IReadOnlyList<Move> moves, Board board, int enemyStrategyFilter)
     {
-        var otherBot = new MyBot();
-        otherBot.AfraidOfLosing = false;
-        var timer = new Timer(100000);
+        var otherBot = new MyBot() { AfraidOfLosing = false };
+        Timer timer = new(100000);
         return moves.Where(move => MakeMoveAndDoFunc(boardAfterMove =>
         {
             otherBot.Think(boardAfterMove, timer);
-            return otherBot.LastMoveStrategy != strategy;
+            return otherBot.LastMoveStrategy != enemyStrategyFilter;
         }, board, move)).ToArray();
     }
+
     #endregion
 
     #region Checkmate helpers
