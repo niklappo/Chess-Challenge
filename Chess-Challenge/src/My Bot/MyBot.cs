@@ -5,6 +5,8 @@ using ChessChallenge.API;
 
 public class MyBot : IChessBot
 {
+    private static readonly Random rnd = new();
+
     // TODO 3: Make depth as parameter of all strategies. Set up depth on the base of time left.
     
     public Move Think(Board board, Timer timer)
@@ -14,7 +16,7 @@ public class MyBot : IChessBot
         Move[] allMoves = board.GetLegalMoves();
         if (allMoves.Length == 0) return new Move(); // Can happen if called from this class
 
-        var moves = AfraidOfLosing ? FilterMoves(allMoves, board) : allMoves;
+        var moves = AfraidOfLosing ? FilterMoves(allMoves, board, 1) : allMoves;
         if (moves.Length == 0) {
             Console.WriteLine("Failure predicted.");
             return allMoves[0]; // We are definitely lost
@@ -38,9 +40,11 @@ public class MyBot : IChessBot
         }
 
         // TODO 2: Filter moves after which we are captured, or at least cheapest piece will be captured.
-        
-        var rnd = new Random();
-        return moves[rnd.Next(moves.Length)];
+        var newMoves = AfraidOfLosing ? FilterMoves(moves, board, 3) : moves;
+
+        return newMoves.Length > 0
+            ? newMoves[rnd.Next(newMoves.Length)]
+            : moves[rnd.Next(moves.Length)];
     }
 
     #region Properties
@@ -172,17 +176,17 @@ public class MyBot : IChessBot
         }, board, move);
     }
 
-    static Move[] FilterMoves(IReadOnlyList<Move> moves, Board board)
+    static Move[] FilterMoves(IReadOnlyList<Move> moves, Board board, int enemyStrategyFilter)
     {
-        var otherBot = new MyBot();
-        otherBot.AfraidOfLosing = false;
-        var timer = new Timer(100000);
+        var otherBot = new MyBot() { AfraidOfLosing = false };
+        Timer timer = new(100000);
         return moves.Where(move => MakeMoveAndDoFunc(boardAfterMove =>
         {
             otherBot.Think(boardAfterMove, timer);
-            return otherBot.LastMoveStrategy != 1;
+            return otherBot.LastMoveStrategy != enemyStrategyFilter;
         }, board, move)).ToArray();
     }
+
     #endregion
 
     #region Checkmate helpers
@@ -217,8 +221,6 @@ public class MyBot : IChessBot
             if (!success) return false;
         }
         
-        Console.WriteLine($"It has to be checkmate for {(board.IsWhiteToMove ? "Black" : "White")} ");
-        Console.WriteLine(board.CreateDiagram());
         return true;
     }
     #endregion
